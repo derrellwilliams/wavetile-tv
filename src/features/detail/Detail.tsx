@@ -187,7 +187,7 @@ export function Detail({ id }: { id: string }) {
             Favorite
           </Button>
           {type === "Series" && (
-            <Button icon="balloon" on={isKidsShow(item, overrides.value)} onPress={() => setKids(item, !isKidsShow(item, overrides.value))}>
+            <Button icon={isKidsShow(item, overrides.value) ? "check" : "balloon"} on={isKidsShow(item, overrides.value)} onPress={() => setKids(item, !isKidsShow(item, overrides.value))}>
               Kids
             </Button>
           )}
@@ -201,7 +201,7 @@ export function Detail({ id }: { id: string }) {
         {type === "Series" && seasonList.data && seasonList.data.length > 1 && (
           <Shelf title="Seasons">
             {seasonList.data.map((entry) => (
-              <Button key={entry.id} on={entry.id === seasonId} onPress={() => setChosen(entry.id)}>
+              <Button key={entry.id} icon={entry.id === seasonId ? "check" : undefined} on={entry.id === seasonId} onPress={() => setChosen(entry.id)}>
                 {entry.name}
               </Button>
             ))}

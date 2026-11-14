@@ -96,11 +96,11 @@ export function Library({ type, intro, hero, after }: { type: Kind; intro?: Comp
             <Button icon="sort-ascending" onPress={() => setPicking("sort")}>
               {sortLabel}
             </Button>
-            <Button icon="calendar-blank" on={!!view.decade} onPress={() => setPicking("decade")}>
+            <Button icon={view.decade ? "check" : "calendar-blank"} on={!!view.decade} onPress={() => setPicking("decade")}>
               {view.decade ? `${view.decade}s` : "Decade"}
             </Button>
             {logged && (
-              <Button icon="film-reel" on={!!view.seeing} onPress={() => setPicking("seeing")}>
+              <Button icon={view.seeing ? "check" : "film-reel"} on={!!view.seeing} onPress={() => setPicking("seeing")}>
                 {SEEINGS.find((entry) => entry.id === view.seeing)?.label.replace(" on Letterboxd", "") || "Letterboxd"}
               </Button>
             )}
