@@ -54,6 +54,19 @@ const TAP_SIDE = 0.35;
 
 const KEY = { left: 37, up: 38, right: 39, down: 40, ok: 13, play: 415, pause: 19, toggle: 10252, stop: 413, rewind: 412, forward: 417 };
 
+/// "Subtitles" when off; the language when on, so the state reads without relying on a border.
+function subButtonLabel(track: { label: string; language?: string } | undefined): string {
+  if (!track) return "Subtitles";
+  let name = track.label;
+  try {
+    const known = track.language && new Intl.DisplayNames(["en"], { type: "language" }).of(track.language);
+    if (known && known !== track.language) name = known;
+  } catch {
+    // an odd language code: fall back to the track's own label
+  }
+  return `Subtitles · ${name.length > 18 ? name.slice(0, 17) + "…" : name}`;
+}
+
 type Menus = "audio" | "speed" | "subs" | "style" | "chapters" | "quality" | "version" | null;
 
 /// Full-screen playback. The OSD (title, controls, seek bar) shows on Up, Down, a pointer move or
@@ -712,8 +725,8 @@ export function Player({ id, resume, subtitle: chosen, onClose, onNext }: Props)
               Audio
             </Button>
           )}
-          <Button icon="subtitles" on={sub !== null} onPress={() => setMenu("subs")}>
-            Subtitles
+          <Button icon={sub !== null ? "check" : "subtitles"} on={sub !== null} onPress={() => setMenu("subs")}>
+            {subButtonLabel(active?.source.subs.find((track) => track.index === sub))}
           </Button>
           {(item?.chapters?.length ?? 0) > 1 && (
             <Button icon="list-bullets" onPress={() => setMenu("chapters")}>
@@ -733,7 +746,7 @@ export function Player({ id, resume, subtitle: chosen, onClose, onNext }: Props)
           <Button icon="gauge" onPress={() => setMenu("speed")}>
             {speed === 1 ? "Speed" : `${speed}×`}
           </Button>
-          <Button icon="info" on={stats} onPress={() => setStats(!stats)}>
+          <Button icon={stats ? "check" : "info"} on={stats} onPress={() => setStats(!stats)}>
             Stats
           </Button>
           {next && (
