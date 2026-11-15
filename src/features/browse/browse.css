@@ -311,6 +311,7 @@
 }
 /* The Movies filter row: sort, then two choice tracks, spaced apart so each reads as its own control. */
 .filters {
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-lg);
 }
