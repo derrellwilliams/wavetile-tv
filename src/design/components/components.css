@@ -214,3 +214,28 @@
     transform: translateX(100%);
   }
 }
+
+/* Segments: a track holding a choice of one. Options sit quiet in ink-2; the chosen one is a raised
+   chip in full ink with a check. Focus inverts whichever option the remote is on, as on any button. */
+.segments {
+  display: inline-flex;
+  gap: var(--space-xxs);
+  padding: var(--space-xxs);
+  border-radius: calc(var(--radius-small) + var(--space-xxs));
+  background: var(--tint);
+}
+.segments .button {
+  height: calc(var(--control) - 2 * var(--space-xxs));
+  padding: 0 var(--space-md);
+  background: none;
+  color: var(--ink-2);
+}
+.segments .button[aria-pressed="true"]:not(:focus) {
+  background: var(--tint-pressed);
+  color: var(--ink);
+  box-shadow: none;
+}
+.segments .button:focus {
+  background: var(--ink);
+  color: var(--on-ink);
+}

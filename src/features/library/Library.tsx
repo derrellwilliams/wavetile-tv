@@ -14,11 +14,22 @@ import { averages } from "../../letterboxd/average";
 import { useMarks } from "../../letterboxd/marks";
 import { useItemMenu } from "../browse/ItemMenu";
 import { isKidsShow, overrides } from "../kids/kids";
-import { arrange, decadesOf, DEFAULT_VIEW, isFiltered, readView, SEEINGS, SORTS, watched, type Seeing, type SortKey, type View } from "./arrange";
+import { Segments, type Segment } from "../../design/components/Segments";
+import { arrange, decadesOf, DEFAULT_VIEW, isFiltered, MOVIE_VIEW, readView, SORTS, watched, type Only, type Seen, type SortKey, type View } from "./arrange";
 
 /// Kids is the shows the Kids tab holds; Series is the rest, so a show is on one tab only.
 type Kind = "Movie" | "Series" | "Kids";
-type Picking = "sort" | "decade" | "seeing" | null;
+type Picking = "sort" | "decade" | null;
+
+const SEEN_CHOICES: Segment<Seen>[] = [
+  { id: "unwatched", label: "Unwatched", icon: "eye-slash" },
+  { id: "watched", label: "Watched", icon: "eye" },
+];
+const ONLY_CHOICES: Segment<Only>[] = [
+  { id: "", label: "All", icon: "film-strip" },
+  { id: "favorites", label: "Favorites", icon: "heart" },
+  { id: "watchlist", label: "Watchlist", icon: "bookmark-simple" },
+];
 
 const loaders: Record<Kind, (session: Session) => ReturnType<typeof everything>> = {
   Movie: (session) => everything(session, "Movie"),
@@ -27,13 +38,18 @@ const loaders: Record<Kind, (session: Session) => ReturnType<typeof everything>>
 };
 
 /// Movies or Shows (or Kids, which brings its own `intro` shelves above the grid): the whole library as a poster grid, with the order and filters chosen from
-/// the row above it. The choice is remembered per library.
+/// the row above it. The choice is remembered per library. Movies have their own set: sort, Unwatched / Watched (Letterboxd's
+/// state once a log is loaded) and All / Favorites / Watchlist.
 export function Library({ type, intro, hero, after }: { type: Kind; intro?: ComponentChildren; hero?: boolean; after?: ComponentChildren }) {
   const screen = useRef<HTMLDivElement>(null);
   const library = useResource(`all:${type === "Movie" ? "Movie" : "Series"}`, loaders[type]);
   const choices = overrides.value;
   const itemMenu = useItemMenu();
-  const [view, setView] = useState<View>(() => readView(load(`view.${type}`)));
+  const movies = type === "Movie";
+  const base = movies ? MOVIE_VIEW : DEFAULT_VIEW;
+  // Movies moved to a new key when their filters changed, so they open on the new defaults once.
+  const key = movies ? "view.Movie.2" : `view.${type}`;
+  const [view, setView] = useState<View>(() => readView(load(key), base));
   const [picking, setPicking] = useState<Picking>(null);
 
   const all = useMemo(
@@ -58,21 +74,16 @@ export function Library({ type, intro, hero, after }: { type: Kind; intro?: Comp
   const change = (next: Partial<View>) => {
     const updated = { ...view, ...next };
     setView(updated);
-    save(`view.${type}`, JSON.stringify(updated));
+    save(key, JSON.stringify(updated));
     if (screen.current) screen.current.scrollTop = 0;
   };
 
-  const sorts = SORTS.filter((sort) => (type === "Movie" || sort.id !== "runtime") && (sort.id === "average" ? type === "Movie" : logged || (sort.id !== "mine" && sort.id !== "seen")));
+  const sorts = SORTS.filter((sort) => (movies || (sort.id !== "runtime" && sort.id !== "average")) && (logged || (sort.id !== "mine" && sort.id !== "seen")));
   const sortLabel = sorts.find((sort) => sort.id === view.sort)?.label ?? "Name";
+  // The watchlist comes from the Letterboxd log, so without one there is nothing to show.
+  const onlyChoices = logged ? ONLY_CHOICES : ONLY_CHOICES.filter((choice) => choice.id !== "watchlist");
   const menus: Record<Exclude<Picking, null>, { title: string; options: Option[]; value: string; pick: (id: string) => void }> = {
     sort: { title: "Sort by", options: sorts, value: view.sort, pick: (id) => change({ sort: id as SortKey }) },
-    seeing: {
-      title: "Letterboxd",
-      options: SEEINGS,
-      value: view.seeing,
-      // Picking the one already chosen turns the filter off.
-      pick: (seeing) => change({ seeing: view.seeing === seeing ? "" : (seeing as Seeing) }),
-    },
     decade: {
       title: "Decade",
       options: [{ id: "", label: "Any decade" }, ...decades.map((decade) => ({ id: decade, label: `${decade}s` }))],
@@ -92,35 +103,38 @@ export function Library({ type, intro, hero, after }: { type: Kind; intro?: Comp
             <h1 class="display">{type === "Movie" ? "Movies" : type === "Kids" ? "All kids' shows" : "Shows"}</h1>
             {all && <span class="mono secondary">{shown.length === all.length ? all.length : `${shown.length} of ${all.length}`}</span>}
           </div>
-          <div class="row" data-focus-group>
-            <Button icon="sort-ascending" onPress={() => setPicking("sort")}>
-              {sortLabel}
-            </Button>
-            <Button icon={view.decade ? "check" : "calendar-blank"} on={!!view.decade} onPress={() => setPicking("decade")}>
-              {view.decade ? `${view.decade}s` : "Decade"}
-            </Button>
-            {logged && (
-              <Button icon={view.seeing ? "check" : "film-reel"} on={!!view.seeing} onPress={() => setPicking("seeing")}>
-                {SEEINGS.find((entry) => entry.id === view.seeing)?.label.replace(" on Letterboxd", "") || "Letterboxd"}
+          {movies ? (
+            <div class="row filters" data-focus-group>
+              <Button icon="sort-ascending" onPress={() => setPicking("sort")}>
+                {sortLabel}
               </Button>
-            )}
-            {!(type === "Movie" && logged) && (
-              <Button icon={view.unwatched ? "check" : "eye"} on={view.unwatched} onPress={() => change({ unwatched: !view.unwatched })}>
+              <Segments label="Watched" options={SEEN_CHOICES} value={view.seen || "unwatched"} onPick={(seen) => change({ seen })} />
+              <Segments label="Show" options={onlyChoices} value={view.only} onPick={(only) => change({ only })} />
+            </div>
+          ) : (
+            <div class="row" data-focus-group>
+              <Button icon="sort-ascending" onPress={() => setPicking("sort")}>
+                {sortLabel}
+              </Button>
+              <Button icon={view.decade ? "check" : "calendar-blank"} on={!!view.decade} onPress={() => setPicking("decade")}>
+                {view.decade ? `${view.decade}s` : "Decade"}
+              </Button>
+              <Button icon={view.seen ? "check" : "eye"} on={!!view.seen} onPress={() => change({ seen: view.seen ? "" : "unwatched" })}>
                 Unwatched
               </Button>
-            )}
-            <Button icon={view.favorites ? "check" : "heart"} on={view.favorites} onPress={() => change({ favorites: !view.favorites })}>
-              Favorites
-            </Button>
-          </div>
+              <Button icon={view.only ? "check" : "heart"} on={!!view.only} onPress={() => change({ only: view.only ? "" : "favorites" })}>
+                Favorites
+              </Button>
+            </div>
+          )}
         </header>
 
         {all && shown.length > 0 && <Grid items={shown} onOpen={openItem} onHold={itemMenu.ask} autoFocus={!hero} />}
         {all && shown.length === 0 && (
-          <Status title={isFiltered(view) ? `No ${noun} match these filters` : `No ${noun} in the library yet`}>
-            {isFiltered(view) && (
+          <Status title={isFiltered(view, base) ? `No ${noun} match these filters` : `No ${noun} in the library yet`}>
+            {isFiltered(view, base) && (
               <div class="row" data-focus-group>
-                <Button onPress={() => change({ ...DEFAULT_VIEW, sort: view.sort })}>Clear filters</Button>
+                <Button onPress={() => change({ ...base, sort: view.sort })}>Clear filters</Button>
               </div>
             )}
           </Status>

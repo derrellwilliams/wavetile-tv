@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Item } from "../../api/items";
-import { arrange, decadesOf, DEFAULT_VIEW, isFiltered, readView } from "./arrange";
+import { arrange, decadesOf, DEFAULT_VIEW, isFiltered, MOVIE_VIEW, readView } from "./arrange";
 
 function movie(name: string, more: Partial<Item> = {}): Item {
   return { id: name, type: "Movie", name, sortName: name.toLowerCase(), genres: [], played: false, favorite: false, ...more };
@@ -37,16 +37,16 @@ describe("arrange", () => {
     const zodiac = LIBRARY.find((item) => item.name === "Zodiac")!;
     const marks = new Map([[zodiac.id, { name: "Zodiac", year: 2007, uri: "", watched: true, rewatches: 0, watchlist: false }]]);
     // Heat is played in Jellyfin but not in the log, so it still counts as unwatched.
-    expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, unwatched: true }, marks))).toEqual(["Alien", "Heat", "Mystery"]);
+    expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, seen: "unwatched" }, marks))).toEqual(["Alien", "Heat", "Mystery"]);
     // With no log, Jellyfin's flag is used.
-    expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, unwatched: true }))).toEqual(["Alien", "Mystery", "Zodiac"]);
+    expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, seen: "unwatched" }))).toEqual(["Alien", "Mystery", "Zodiac"]);
   });
 
   it("filters by decade, unwatched and favorites together", () => {
-    expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, decade: "2000", unwatched: true }))).toEqual(["Zodiac"]);
+    expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, decade: "2000", seen: "unwatched" }))).toEqual(["Zodiac"]);
     expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, decade: "1990" }))).toEqual(["Heat"]);
-    expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, favorites: true }))).toEqual(["Alien"]);
-    expect(arrange(LIBRARY, { ...DEFAULT_VIEW, favorites: true, decade: "2000" })).toEqual([]);
+    expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, only: "favorites" }))).toEqual(["Alien"]);
+    expect(arrange(LIBRARY, { ...DEFAULT_VIEW, only: "favorites", decade: "2000" })).toEqual([]);
   });
 });
 
@@ -58,7 +58,7 @@ describe("filter choices", () => {
   it("knows when a filter is on", () => {
     expect(isFiltered(DEFAULT_VIEW)).toBe(false);
     expect(isFiltered({ ...DEFAULT_VIEW, sort: "year" })).toBe(false);
-    expect(isFiltered({ ...DEFAULT_VIEW, unwatched: true })).toBe(true);
+    expect(isFiltered({ ...DEFAULT_VIEW, seen: "unwatched" })).toBe(true);
   });
 });
 
@@ -74,16 +74,19 @@ describe("arrange with a Letterboxd log", () => {
     expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, sort: "seen" }, marks))).toEqual(["Heat", "Alien", "Mystery", "Zodiac"]);
   });
   it("filters watched, not watched and watchlist", () => {
-    expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, seeing: "watched" }, marks))).toEqual(["Alien", "Heat"]);
-    expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, seeing: "unwatched" }, marks))).toEqual(["Mystery", "Zodiac"]);
-    expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, seeing: "watchlist" }, marks))).toEqual(["Mystery"]);
-    expect(isFiltered({ ...DEFAULT_VIEW, seeing: "watched" })).toBe(true);
+    expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, seen: "watched" }, marks))).toEqual(["Alien", "Heat"]);
+    expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, seen: "unwatched" }, marks))).toEqual(["Mystery", "Zodiac"]);
+    expect(names(arrange(LIBRARY, { ...DEFAULT_VIEW, only: "watchlist" }, marks))).toEqual(["Mystery"]);
+    expect(isFiltered({ ...DEFAULT_VIEW, seen: "watched" })).toBe(true);
+    // Movies start on Unwatched, so that alone isn't a filter to clear there.
+    expect(isFiltered(MOVIE_VIEW, MOVIE_VIEW)).toBe(false);
+    expect(isFiltered({ ...MOVIE_VIEW, only: "favorites" }, MOVIE_VIEW)).toBe(true);
   });
 });
 
 describe("readView", () => {
   it("reads back a saved view", () => {
-    const view = { sort: "rating", decade: "1990", unwatched: true, favorites: false, seeing: "watchlist" } as const;
+    const view = { sort: "rating", decade: "1990", seen: "watched", only: "watchlist" } as const;
     expect(readView(JSON.stringify(view))).toEqual(view);
   });
 
@@ -91,6 +94,12 @@ describe("readView", () => {
     expect(readView(null)).toEqual(DEFAULT_VIEW);
     expect(readView("{not json")).toEqual(DEFAULT_VIEW);
     expect(readView("null")).toEqual(DEFAULT_VIEW);
-    expect(readView(JSON.stringify({ sort: "__proto__", decade: "199", unwatched: "yes" }))).toEqual(DEFAULT_VIEW);
+    expect(readView(JSON.stringify({ sort: "__proto__", decade: "199", unwatched: "yes", seen: "maybe" }))).toEqual(DEFAULT_VIEW);
+    expect(readView(null, MOVIE_VIEW)).toEqual(MOVIE_VIEW);
+    expect(readView(JSON.stringify({ only: "favorites" }), MOVIE_VIEW)).toEqual({ ...MOVIE_VIEW, only: "favorites" });
+  });
+
+  it("carries over the old Unwatched and Favorites switches", () => {
+    expect(readView(JSON.stringify({ sort: "year", unwatched: true, favorites: true }))).toEqual({ ...DEFAULT_VIEW, sort: "year", seen: "unwatched", only: "favorites" });
   });
 });

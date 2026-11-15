@@ -21,6 +21,7 @@ const ICONS = [
   "calendar-blank",
   "check",
   "eye",
+  "eye-slash",
   "film-reel",
   "film-strip",
   "balloon",

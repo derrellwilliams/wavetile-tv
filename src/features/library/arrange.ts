@@ -1,28 +1,33 @@
 /// Sorting and filtering a library on the TV. The whole list is already in memory (and in the
 /// cache), so changing the order or a filter never waits for the server.
 import type { Item } from "../../api/items";
-import type { Seen } from "../../letterboxd/log";
+import type { Seen as Logged } from "../../letterboxd/log";
 
 /// What the user's Letterboxd history says about each movie, by library item id.
-export type Marks = ReadonlyMap<string, Seen>;
+export type Marks = ReadonlyMap<string, Logged>;
 
 export type SortKey = "name" | "added" | "year" | "rating" | "runtime" | "mine" | "seen" | "average";
-export type Seeing = "" | "watched" | "unwatched" | "watchlist";
-const SEEING: readonly string[] = ["", "watched", "unwatched", "watchlist"];
+/// Watched state: Letterboxd's for movies once a log is loaded, otherwise Jellyfin's.
+export type Seen = "" | "watched" | "unwatched";
+/// A narrower set: favorites in Jellyfin, or the Letterboxd watchlist.
+export type Only = "" | "favorites" | "watchlist";
+const SEENS: readonly string[] = ["", "watched", "unwatched"];
+const ONLYS: readonly string[] = ["", "favorites", "watchlist"];
 
 export interface View {
   sort: SortKey;
   /// First year of the decade ("1990"), or "" for any.
   decade: string;
-  unwatched: boolean;
-  favorites: boolean;
-  /// Letterboxd: only films you have (or haven't) logged, or that are on your watchlist.
-  seeing: Seeing;
+  seen: Seen;
+  only: Only;
 }
 
-export const DEFAULT_VIEW: View = { sort: "name", decade: "", unwatched: false, favorites: false, seeing: "" };
+export const DEFAULT_VIEW: View = { sort: "name", decade: "", seen: "", only: "" };
+/// Movies open on the best-rated films you haven't seen yet.
+export const MOVIE_VIEW: View = { sort: "average", decade: "", seen: "unwatched", only: "" };
 
 export const SORTS: { id: SortKey; label: string }[] = [
+  { id: "average", label: "Letterboxd average" },
   { id: "name", label: "Name" },
   { id: "added", label: "Date added" },
   { id: "year", label: "Year" },
@@ -30,13 +35,6 @@ export const SORTS: { id: SortKey; label: string }[] = [
   { id: "runtime", label: "Runtime" },
   { id: "mine", label: "Your rating" },
   { id: "seen", label: "Date you watched" },
-  { id: "average", label: "Letterboxd average" },
-];
-
-export const SEEINGS: { id: Seeing; label: string }[] = [
-  { id: "watched", label: "Watched on Letterboxd" },
-  { id: "unwatched", label: "Not watched on Letterboxd" },
-  { id: "watchlist", label: "On your watchlist" },
 ];
 
 /// The value a sort compares, and whether larger comes first. Name is handled apart.
@@ -60,16 +58,9 @@ function byName(a: Item, b: Item): number {
 
 const decadeOf = (item: Item) => (item.year === undefined ? "" : String(Math.floor(item.year / 10) * 10));
 
-export function isFiltered(view: View): boolean {
-  return !!view.decade || view.unwatched || view.favorites || !!view.seeing;
-}
-
-/// A film in the library that isn't in the log counts as not watched.
-function seeingOk(seeing: Seeing, mark: Seen | undefined): boolean {
-  if (!seeing) return true;
-  if (seeing === "watched") return !!mark?.watched;
-  if (seeing === "unwatched") return !mark?.watched;
-  return !!mark?.watchlist;
+/// Whether any filter differs from where this library starts (`base`), so "Clear filters" has something to undo.
+export function isFiltered(view: View, base: View = DEFAULT_VIEW): boolean {
+  return view.decade !== base.decade || view.seen !== base.seen || view.only !== base.only;
 }
 
 /// Letterboxd is the source of truth for movies once a log is loaded; Jellyfin's flag is only
@@ -83,9 +74,9 @@ export function arrange(items: readonly Item[], view: View, marks: Marks = new M
   const shown = items.filter(
     (item) =>
       (!view.decade || decadeOf(item) === view.decade) &&
-      (!view.unwatched || !watched(item, marks)) &&
-      (!view.favorites || item.favorite) &&
-      seeingOk(view.seeing, marks.get(item.id)),
+      (!view.seen || watched(item, marks) === (view.seen === "watched")) &&
+      (view.only !== "favorites" || item.favorite) &&
+      (view.only !== "watchlist" || !!marks.get(item.id)?.watchlist),
   );
   if (view.sort === "name") return shown.sort(byName);
   const { of, descending } = BY[view.sort];
@@ -106,20 +97,21 @@ export function decadesOf(items: readonly Item[]): string[] {
   return [...all].sort((a, b) => Number(b) - Number(a));
 }
 
-/// A saved view read back from storage: anything unexpected falls back to the default.
-export function readView(raw: string | null): View {
-  if (!raw) return DEFAULT_VIEW;
+/// A saved view read back from storage: anything unexpected falls back to `base`.
+export function readView(raw: string | null, base: View = DEFAULT_VIEW): View {
+  if (!raw) return base;
   try {
     const saved = JSON.parse(raw) as Partial<Record<keyof View, unknown>> | null;
-    if (!saved || typeof saved !== "object") return DEFAULT_VIEW;
+    if (!saved || typeof saved !== "object") return base;
+    const old = saved as { unwatched?: unknown; favorites?: unknown };
     return {
-      sort: SORTS.some((sort) => sort.id === saved.sort) ? (saved.sort as SortKey) : "name",
-      seeing: typeof saved.seeing === "string" && SEEING.includes(saved.seeing) ? (saved.seeing as Seeing) : "",
-      decade: typeof saved.decade === "string" && /^\d{4}$/.test(saved.decade) ? saved.decade : "",
-      unwatched: saved.unwatched === true,
-      favorites: saved.favorites === true,
+      sort: SORTS.some((sort) => sort.id === saved.sort) ? (saved.sort as SortKey) : base.sort,
+      decade: typeof saved.decade === "string" && /^\d{4}$/.test(saved.decade) ? saved.decade : base.decade,
+      // Views saved before `seen` and `only` kept them as two switches.
+      seen: typeof saved.seen === "string" && SEENS.includes(saved.seen) ? (saved.seen as Seen) : old.unwatched === true ? "unwatched" : base.seen,
+      only: typeof saved.only === "string" && ONLYS.includes(saved.only) ? (saved.only as Only) : old.favorites === true ? "favorites" : base.only,
     };
   } catch {
-    return DEFAULT_VIEW;
+    return base;
   }
 }

@@ -103,3 +103,16 @@ html[data-platform="android"] .player .seek {
   height: var(--control);
   touch-action: none;
 }
+
+/* Segments on the tablet: no lingering focus fill, just the chosen chip and press feedback. */
+html[data-platform="android"] .segments .button:focus:not([aria-pressed="true"]) {
+  background: none;
+  color: var(--ink-2);
+}
+html[data-platform="android"] .segments .button[aria-pressed="true"] {
+  color: var(--ink);
+  box-shadow: none;
+}
+html[data-platform="android"] .segments .button:active:not([aria-disabled="true"]) {
+  background: var(--tint-pressed);
+}
