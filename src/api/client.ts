@@ -9,6 +9,9 @@ export interface Connection {
   server: string; // base URL, no trailing slash
   token?: string;
   deviceId: string;
+  /// The server Id saved at sign-in. When set, a request that carries the token first checks that
+  /// the address still answers as that server (see `confirmServer`).
+  serverId?: string;
 }
 
 /// `status` is the HTTP status, or 0 when the server couldn't be reached (offline, timeout, CORS).
@@ -72,9 +75,52 @@ export async function readCapped(response: Response, max: number): Promise<Uint8
   return bytes;
 }
 
+/// How long a confirmed server stays confirmed. A network change (online/offline) or a failed
+/// request ends it sooner.
+const CONFIRM_MS = 60_000;
+let confirmed: { server: string; id: string; until: number } | null = null;
+let confirming: { server: string; id: string; done: Promise<boolean> } | null = null;
+
+/// Forget the confirmed server, so the next request with the token checks again.
+export function forgetConfirmedServer(): void {
+  confirmed = null;
+}
+
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  window.addEventListener("online", forgetConfirmedServer);
+  window.addEventListener("offline", forgetConfirmedServer);
+}
+
+/// True when `server` answers its public info (no token sent) with the Id saved at sign-in. Stops
+/// the token going to whatever holds the same LAN address on another network (a hotel or café).
+export async function confirmServer(server: string, id: string, deviceId: string): Promise<boolean> {
+  if (confirmed && confirmed.server === server && confirmed.id === id && Date.now() < confirmed.until) return true;
+  if (confirming && confirming.server === server && confirming.id === id) return confirming.done;
+  const done = (async () => {
+    try {
+      const info = await request<{ Id?: unknown } | null>({ server, deviceId }, "/System/Info/Public", { timeoutMs: 6000 });
+      const ok = typeof info?.Id === "string" && info.Id.toLowerCase() === id.toLowerCase();
+      confirmed = ok ? { server, id, until: Date.now() + CONFIRM_MS } : null;
+      return ok;
+    } catch {
+      confirmed = null;
+      return false;
+    }
+  })();
+  confirming = { server, id, done };
+  try {
+    return await done;
+  } finally {
+    if (confirming?.done === done) confirming = null;
+  }
+}
+
 export async function request<T>(connection: Connection, path: string, options: Options = {}): Promise<T> {
   const method = options.method ?? "GET";
   const what = `${method} ${path}`; // safe to show or log: no host, query or body
+  if (connection.token && connection.serverId && !(await confirmServer(connection.server, connection.serverId, connection.deviceId))) {
+    throw new ApiError(0, what);
+  }
   const query = options.query ? `?${new URLSearchParams(options.query)}` : "";
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 10000);
@@ -97,6 +143,7 @@ export async function request<T>(connection: Connection, path: string, options: 
         redirect: "error", // a redirect could carry the token to another host
       });
     } catch {
+      forgetConfirmedServer(); // unreachable: maybe a new network, so check again next time
       throw new ApiError(0, what);
     }
     if (!response.ok) throw new ApiError(response.status, what);

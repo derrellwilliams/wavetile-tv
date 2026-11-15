@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { findServer, quickConnectStart, signInWithPassword, signInWithQuickConnect, versionAtLeast } from "./auth";
-import { ApiError, authHeader, readCapped, request } from "./client";
+import { findServer, quickConnectStart, refresh, signInWithPassword, signInWithQuickConnect, versionAtLeast, type Session } from "./auth";
+import { ApiError, authHeader, forgetConfirmedServer, readCapped, request } from "./client";
 
-const SERVER = { url: "http://192.168.86.20:8096", name: "Home", version: "10.10.7" };
+const SERVER_ID = "0123456789abcdef0123456789abcdef";
+const SERVER = { url: "http://192.168.86.20:8096", id: SERVER_ID, name: "Home", version: "10.10.7" };
 const CONNECTION = { server: SERVER.url, deviceId: "abc123", token: "tok" };
 
 type Reply = { status?: number; json?: unknown; text?: string } | Error;
@@ -29,7 +30,10 @@ beforeEach(() => {
     removeItem: (key: string) => void store.delete(key),
   });
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  forgetConfirmedServer();
+});
 
 describe("authHeader", () => {
   it("names the client and only adds a token when there is one", () => {
@@ -69,7 +73,7 @@ describe("request", () => {
 });
 
 describe("findServer", () => {
-  const info = { Id: "f00", Version: "10.10.7", ServerName: "Home" };
+  const info = { Id: SERVER_ID, Version: "10.10.7", ServerName: "Home" };
 
   it("picks the first address that answers like Jellyfin", async () => {
     serve({ "GET http://192.168.86.20:8096/System/Info/Public": { json: info } });
@@ -86,6 +90,11 @@ describe("findServer", () => {
 
   it("rejects something that answers but isn't Jellyfin", async () => {
     serve({ "GET http://nas:8096/System/Info/Public": { json: { hello: "world" } } });
+    await expect(findServer("nas")).rejects.toMatchObject({ status: 0 });
+  });
+
+  it("rejects a server Id that isn't hex", async () => {
+    serve({ "GET http://nas:8096/System/Info/Public": { json: { ...info, Id: "../x" } } });
     await expect(findServer("nas")).rejects.toMatchObject({ status: 0 });
   });
 
@@ -118,6 +127,7 @@ describe("quick connect", () => {
     });
     await expect(signInWithQuickConnect(SERVER, "s")).resolves.toEqual({
       server: SERVER.url,
+      serverId: SERVER_ID,
       serverName: "Home",
       serverVersion: "10.10.7",
       userId: "9f8e7d6c-0000-0000-0000-000000000000",
@@ -138,6 +148,61 @@ describe("password sign-in", () => {
       "POST http://192.168.86.20:8096/Users/AuthenticateByName": { json: { AccessToken: 'a", Evil="1', User: { Id: "abc" } } },
     });
     await expect(signInWithPassword(SERVER, "me", "pw")).rejects.toMatchObject({ status: 0 });
+  });
+});
+
+describe("server check", () => {
+  const PUBLIC = "GET http://192.168.86.20:8096/System/Info/Public";
+  const info = { Id: SERVER_ID, Version: "10.10.7", ServerName: "Home" };
+  const checked = { ...CONNECTION, serverId: SERVER_ID };
+
+  it("sends the token only after the address answers with the saved server Id", async () => {
+    const calls = serve({ [PUBLIC]: { json: info }, "GET http://192.168.86.20:8096/Thing": { json: 1 } });
+    await expect(request(checked, "/Thing")).resolves.toBe(1);
+    expect(calls.map((call) => call.key)).toEqual([PUBLIC, "GET http://192.168.86.20:8096/Thing"]);
+    expect((calls[0]!.init.headers as Record<string, string>).Authorization).not.toContain("Token=");
+  });
+
+  it("never sends the token to a different server at the same address", async () => {
+    const calls = serve({ [PUBLIC]: { json: { ...info, Id: "ffffffffffffffffffffffffffffffff" } }, "GET http://192.168.86.20:8096/Thing": { json: 1 } });
+    await expect(request(checked, "/Thing")).rejects.toMatchObject({ status: 0 });
+    expect(calls.map((call) => call.key)).toEqual([PUBLIC]);
+  });
+
+  it("never sends the token when the check can't be answered", async () => {
+    const calls = serve({ "GET http://192.168.86.20:8096/Thing": { json: 1 } });
+    await expect(request(checked, "/Thing")).rejects.toMatchObject({ status: 0 });
+    expect(calls.every((call) => !(call.init.headers as Record<string, string>).Authorization?.includes("Token="))).toBe(true);
+  });
+
+  it("checks once for a burst of requests, and again after a failure", async () => {
+    const calls = serve({ [PUBLIC]: { json: info }, "GET http://192.168.86.20:8096/Thing": { json: 1 } });
+    await Promise.all([request(checked, "/Thing"), request(checked, "/Thing"), request(checked, "/Thing")]);
+    expect(calls.filter((call) => call.key === PUBLIC)).toHaveLength(1);
+    await request(checked, "/Gone").catch(() => undefined); // unreachable: forgets the check
+    await request(checked, "/Thing");
+    expect(calls.filter((call) => call.key === PUBLIC)).toHaveLength(2);
+  });
+
+  it("checks again after a network change", async () => {
+    const calls = serve({ [PUBLIC]: { json: info }, "GET http://192.168.86.20:8096/Thing": { json: 1 } });
+    await request(checked, "/Thing");
+    forgetConfirmedServer(); // what the online/offline events do
+    await request(checked, "/Thing");
+    expect(calls.filter((call) => call.key === PUBLIC)).toHaveLength(2);
+  });
+
+  const SAVED: Session = { server: SERVER.url, serverName: "Home", serverVersion: "10.10.7", userId: "abc", userName: "Me", token: "tok" };
+
+  it("refresh gives an older session the Id of the server it reaches", async () => {
+    serve({ [PUBLIC]: { json: info }, "GET http://192.168.86.20:8096/Users/Me": { json: { Name: "Me" } } });
+    await expect(refresh(SAVED)).resolves.toMatchObject({ serverId: SERVER_ID });
+  });
+
+  it("refresh keeps the session but sends no token when another server answers", async () => {
+    const calls = serve({ [PUBLIC]: { json: { ...info, Id: "ffffffffffffffffffffffffffffffff" } }, "GET http://192.168.86.20:8096/Users/Me": { json: {} } });
+    await expect(refresh({ ...SAVED, serverId: SERVER_ID })).rejects.toMatchObject({ status: 0 });
+    expect(calls.map((call) => call.key)).toEqual([PUBLIC]);
   });
 });
 

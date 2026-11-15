@@ -4,7 +4,7 @@
 /// behind `isAndroid`), and the native bridge is reached through `loadNative()`.
 import { signal } from "@preact/signals";
 import { connectionOf, type Session } from "../api/auth";
-import { authHeader, readCapped, request } from "../api/client";
+import { authHeader, confirmServer, readCapped, request } from "../api/client";
 import { artSrc, type Item } from "../api/items";
 import { allEpisodes } from "../api/library";
 import { session as current } from "../api/session";
@@ -234,7 +234,8 @@ export async function tick(): Promise<void> {
       }
     }
     const next = nextToStart(saved.value);
-    if (next) {
+    // The transfer carries the token, so only start it when the saved server is the one answering.
+    if (next && (!user.serverId || (await confirmServer(user.server, user.serverId, deviceId())))) {
       const info = await native.Downloads.info();
       space.value = { free: info.freeBytes, total: info.totalBytes };
       try {

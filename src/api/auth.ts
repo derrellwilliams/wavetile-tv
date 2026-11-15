@@ -7,12 +7,16 @@ import { deviceId } from "./storage";
 
 export interface ServerInfo {
   url: string;
+  /// The server's own Id, kept so later requests can check they reach the same server.
+  id: string;
   name: string;
   version: string;
 }
 
 export interface Session {
   server: string;
+  /// Missing only in sessions saved before the check existed; `refresh` fills it in.
+  serverId?: string;
   serverName: string;
   serverVersion: string;
   userId: string;
@@ -43,13 +47,18 @@ export const connectionOf = (session: Session): Connection => ({
   server: session.server,
   token: session.token,
   deviceId: deviceId(),
+  serverId: session.serverId,
 });
+
+/// Server Ids are hex (with or without dashes); anything else is not a Jellyfin server.
+export const SERVER_ID = /^[0-9a-f-]{8,64}$/i;
 
 async function probe(url: string): Promise<ServerInfo> {
   const info = await request<PublicSystemInfo>(anonymous(url), "/System/Info/Public", { timeoutMs: 6000 });
   const version = text(info?.Version, 20);
-  if (!text(info?.Id, 64) || !version || !/^\d+(\.\d+){1,3}/.test(version)) throw new ApiError(0, "GET /System/Info/Public");
-  return { url, name: label(info.ServerName, "Jellyfin"), version };
+  const id = text(info?.Id, 64);
+  if (!id || !SERVER_ID.test(id) || !version || !/^\d+(\.\d+){1,3}/.test(version)) throw new ApiError(0, "GET /System/Info/Public");
+  return { url, id, name: label(info.ServerName, "Jellyfin"), version };
 }
 
 /// Tries every reading of a typed address at once and keeps the most likely one that answered.
@@ -102,6 +111,7 @@ function sessionFrom(server: ServerInfo, result: AuthenticationResult, what: str
   if (!token || !userId || !/^[\w.~+/=-]+$/.test(token) || !/^[0-9a-f-]+$/i.test(userId)) throw new ApiError(0, what);
   return {
     server: server.url,
+    serverId: server.id,
     serverName: server.name,
     serverVersion: server.version,
     userId,
@@ -127,19 +137,19 @@ export async function signInWithPassword(server: ServerInfo, username: string, p
 
 /// Checks a saved session still works and picks up a changed user name or server version.
 /// Throws ApiError: 401 means the token was revoked, 0 that the server can't be reached.
+/// Asks without the token first: if the address now answers as a different server (another
+/// network), the token is never sent and this throws ApiError 0, which keeps the session.
 export async function refresh(session: Session): Promise<Session> {
-  const me = await request<UserDto>(connectionOf(session), "/Users/Me");
-  let server: ServerInfo | null = null;
-  try {
-    server = await probe(session.server);
-  } catch {
-    // The name and version are only for show; keep the saved ones.
-  }
+  const server = await probe(session.server);
+  if (session.serverId && server.id.toLowerCase() !== session.serverId.toLowerCase()) throw new ApiError(0, "GET /System/Info/Public");
+  // Sessions saved before the check existed take the Id of the server they reach now.
+  const checked = { ...session, serverId: session.serverId ?? server.id };
+  const me = await request<UserDto>(connectionOf(checked), "/Users/Me");
   return {
-    ...session,
+    ...checked,
     userName: label(me?.Name, session.userName),
-    serverName: server?.name ?? session.serverName,
-    serverVersion: server?.version ?? session.serverVersion,
+    serverName: server.name,
+    serverVersion: server.version,
   };
 }
 
