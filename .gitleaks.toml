@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+# Secret files should never be committed even if a password has no recognizable prefix.
+[[rules]]
+id = "private-config-file"
+description = "Private environment or device credential file"
+path = '''(^|/)(\.env(\.[^/]+)?|\.dev\.vars|secrets\.h|Secrets\.xcconfig)$'''
+regex = '''.+'''
+[[rules.allowlists]]
+paths = ['''(^|/)\.env\.(example|sample|template)$''']

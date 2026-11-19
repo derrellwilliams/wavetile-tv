@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+# GUI Git clients may not inherit Homebrew's PATH.
+PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "Install Gitleaks before committing or pushing: brew install gitleaks" >&2
+  exit 1
+fi
+exec gitleaks git --redact --no-banner --log-opts="--all" .
