@@ -23,7 +23,7 @@ import { autoplayOn, QUALITIES, readQuality } from "../../player/settings";
 import { isBurned } from "../../subtitles/tracks";
 import { resolveChoice, type SubChoice } from "../../subtitles/choice";
 import { type Cue } from "../../subtitles/cues";
-import { readOffset, saveOffset, subtitleStyle } from "../../subtitles/style";
+import { offsetLabel, readOffset, saveOffset, subtitleStyle } from "../../subtitles/style";
 import { SubtitlePanel } from "./SubtitlePanel";
 import { SubtitleStyle } from "./SubtitleStyle";
 import { SubtitleView, useActiveLines } from "./SubtitleView";
@@ -878,6 +878,7 @@ export function Player({ id, resume, subtitle: chosen, onClose, onNext }: Props)
           onOffset={(seconds) => {
             setOffset(seconds);
             saveOffset(id, seconds);
+            flash(`Subtitle sync ${offsetLabel(seconds)}, saved`);
           }}
           onAppearance={() => setMenu("style")}
           onDownloaded={refreshSubs}

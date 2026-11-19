@@ -138,6 +138,9 @@ export function SubtitlePanel({ session, itemId, tracks, selected, offset, onSel
         <Button icon="subtitles" onPress={onAppearance}>
           Appearance
         </Button>
+        <Button icon="check" onPress={onClose}>
+          Done
+        </Button>
       </div>
     </Drawer>
   );
