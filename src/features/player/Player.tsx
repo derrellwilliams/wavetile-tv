@@ -20,6 +20,7 @@ import { plan, PlaybackError, reportProgress, subtitleCues, reportStart, reportS
 import { chapterAt } from "../../player/chapters";
 import { activeSegment, skipLabel, type Segment } from "../../player/segments";
 import { clock, scrubTarget } from "../../player/scrub";
+import { endsLabel, useNow } from "../../player/ends";
 import { autoplayOn, QUALITIES, readQuality } from "../../player/settings";
 import { isBurned } from "../../subtitles/tracks";
 import { resolveChoice, type SubChoice } from "../../subtitles/choice";
@@ -630,11 +631,14 @@ export function Player({ id, resume, subtitle: chosen, onClose, onNext }: Props)
     wake();
   };
   const toSettings = () => setMenu("settings");
+  const now = useNow(paused);
   const lines = useActiveLines(video, sub !== null && live.current.plan?.source.subs.find((track) => track.index === sub)?.text ? cues : [], offset);
   const element = video.current;
   const shown = scrub ?? time;
   const total = duration || active?.source.seconds || 0;
   const fraction = total ? Math.min(1, Math.max(0, shown / total)) : 0;
+  // While paused the end time moves with the clock: it is when the film ends if play resumes now.
+  const ends = paused && !error ? endsLabel(total - shown, now, speed) : "";
   const thumb = trick && current.value && active ? thumbAt(trick, shown) : null;
   const thumbSrc = thumb && trick && current.value && active ? trickplayUrl(current.value, id, trick, active.source.id, thumb.sheet) : null;
   const title = item?.type === "Episode" ? (item.seriesName ?? item.name) : (item?.name ?? "");
@@ -757,6 +761,7 @@ export function Player({ id, resume, subtitle: chosen, onClose, onNext }: Props)
               Next episode
             </Button>
           )}
+          {ends && <span class="player-ends mono">{ends}</span>}
         </div>
       </div>
 

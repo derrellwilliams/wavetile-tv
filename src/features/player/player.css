@@ -357,10 +357,22 @@
   background: rgb(236 228 210 / 0.4);
 }
 /* The focused seek bar sits on the same dark grey as an unfocused button instead of a tan ring;
-   the track thickens so focus still reads from across the room. */
+   the track thickens so focus still reads from across the room. The grey is a band drawn close
+   around the track (a pseudo-element), not the whole tall hit area, so it stays slim. */
 .player .seek:focus {
+  box-shadow: none;
+}
+.player .seek::before {
+  content: "";
+  position: absolute;
+  inset: calc((var(--space-xl) - var(--space-xs) * 3) / 2) 0;
+  border-radius: var(--radius-small);
   background: rgb(38 38 38 / 0.78);
   box-shadow: inset 0 0 0 1px rgb(236 228 210 / 0.18);
+  opacity: 0;
+}
+.player .seek:focus::before {
+  opacity: 1;
 }
 .player .seek:focus .seek-track {
   transform: scaleY(1.5);
@@ -397,4 +409,13 @@ html[data-platform="android"] .player .button:active:not([aria-disabled="true"])
   background: var(--ink);
   color: var(--on-ink);
   box-shadow: none;
+}
+
+/* When the film would end if play resumed now: shown while paused, pushed to the far right of the
+   button row and set on the row's centre line. */
+.player-ends {
+  align-self: center;
+  margin-left: auto;
+  padding-right: var(--space-xs);
+  text-shadow: 0 1px 4px #000;
 }

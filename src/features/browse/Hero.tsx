@@ -2,6 +2,7 @@ import type { ComponentChildren } from "preact";
 import { artSrc, facts, type Item } from "../../api/items";
 import { Icon } from "../../design/components/Icon";
 import { token } from "../../design/tokens";
+import { endsLabel, useNow } from "../../player/ends";
 import type { SeenMark } from "../../letterboxd/marks";
 
 interface Props {
@@ -23,6 +24,11 @@ export function Hero({ item, full, kicker, seen, average, children }: Props) {
   const backdrop = artSrc(item.backdrop, token("--backdrop-w"), token("--backdrop-h"), false);
   const logo = artSrc(item.logo, token("--logo-w"), token("--logo-h"), false);
   const line = facts(item, average);
+  // The detail page of a film or episode says when it would end if started (or resumed) now.
+  const timed = !!full && (item.type === "Movie" || item.type === "Episode") && !!item.minutes;
+  const now = useNow(timed, 60_000);
+  const ends = timed && item.minutes ? endsLabel(item.minutes * 60 - (item.resumeSeconds ?? 0), now) : "";
+  if (ends) line.push(ends);
   // An episode is headed by its show (whose logo this is), with its own name on the next line.
   const heading = item.type === "Episode" ? (item.seriesName ?? item.name) : item.name;
 
