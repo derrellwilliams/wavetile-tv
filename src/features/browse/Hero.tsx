@@ -1,6 +1,8 @@
 import type { ComponentChildren } from "preact";
 import { artSrc, facts, type Item } from "../../api/items";
+import { Icon } from "../../design/components/Icon";
 import { token } from "../../design/tokens";
+import type { SeenMark } from "../../letterboxd/marks";
 
 interface Props {
   item: Item;
@@ -8,8 +10,8 @@ interface Props {
   full?: boolean;
   /// A line above the title ("Continue watching", a show's name).
   kicker?: string;
-  /// One more line under the facts (what Letterboxd says about it).
-  notes?: (string | null)[];
+  /// The viewer's own history with it (rating, last watched, watchlist), as icons with short text.
+  seen?: SeenMark[];
   /// Letterboxd's average, shown beside the rating.
   average?: number | null;
   children?: ComponentChildren;
@@ -17,7 +19,7 @@ interface Props {
 
 /// Backdrop, logo (or the title in type), facts, description and a row of buttons: Home's
 /// spotlight and the head of every detail page.
-export function Hero({ item, full, kicker, notes, average, children }: Props) {
+export function Hero({ item, full, kicker, seen, average, children }: Props) {
   const backdrop = artSrc(item.backdrop, token("--backdrop-w"), token("--backdrop-h"), false);
   const logo = artSrc(item.logo, token("--logo-w"), token("--logo-h"), false);
   const line = facts(item, average);
@@ -42,7 +44,16 @@ export function Hero({ item, full, kicker, notes, average, children }: Props) {
         {logo ? <img key={logo} class="hero-logo" src={logo} alt={heading} /> : <h1 class="display">{heading}</h1>}
         {heading !== item.name && <p class="section">{item.name}</p>}
         {line.length > 0 && <p class="mono secondary">{line.join("  ·  ")}</p>}
-        {notes?.map((note) => note && <p key={note} class="mono secondary">{note}</p>)}
+        {seen && seen.length > 0 && (
+          <p class="mono hero-seen">
+            {seen.map((mark) => (
+              <span key={mark.icon} class="hero-mark" aria-label={mark.label}>
+                <Icon name={mark.icon} />
+                {mark.text}
+              </span>
+            ))}
+          </p>
+        )}
         {full && item.genres.length > 0 && <p class="secondary">{item.genres.slice(0, 4).join(", ")}</p>}
         {item.overview && <p class={full ? "hero-overview" : "hero-overview is-short"}>{item.overview}</p>}
         {children && (

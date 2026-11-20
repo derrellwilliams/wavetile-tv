@@ -28,20 +28,17 @@
   --placeholder: #2e2e2e; /* behind artwork that hasn't loaded */
   --unavailable: 0.35; /* opacity of things that can't be used right now */
 
-  /* Type: one weight, hierarchy from size, color and the mono face. Wavetile's scale
-     12 · 14 · 16 · 18 · 20 · 22 · 36 at ×1.75 for viewing distance (tune on the TV). */
+  /* Type: one weight, three sizes and one mono size. Hierarchy comes from size, then color, then
+     the mono face; nothing in between. */
   --text: "Inter", sans-serif;
   --mono: "Geist Mono", monospace;
-  --size-caption: 21px;
-  --size-small: 24px; /* item titles, subtitles and mono metadata */
-  --size-body: 28px;
+  --size-caption: 21px; /* mono metadata, labels, hints */
+  --size-body: 24px; /* text, item titles */
   --size-large: 32px; /* shelf and section titles */
-  --size-lead: 35px;
-  --size-title: 38px;
   --size-display: 63px; /* screen and detail titles */
   --size-code: 112px; /* the Quick Connect code, read from across the room */
   --tracking-code: 12px;
-  --tracking-display: -0.9px;
+  --tracking-display: -1.5px;
   --leading-text: 1.4;
   --leading-title: 1.2;
 
@@ -61,6 +58,8 @@
   --field-width: 880px;
   --measure: 1100px; /* longest comfortable line of text */
   --icon: 36px;
+  --hint-room: 34px; /* under a row of icon buttons, for the focused one's label */
+  --rail-open: 520px; /* how far the rail's shade reaches while its labels show */
   --mark-width: 184px;
   --mark-height: 32px;
   --press-scale: 0.97;
@@ -68,19 +67,19 @@
   /* Browse: the rail, artwork sizes and the shelves and grid built from them. Six posters (grid) or
      four wide cards fill the width beside the rail. */
   --rail: 128px;
-  --poster-w: 249px; /* six across plus five gaps fill the screen beside the rail */
-  --poster-h: 374px;
-  --thumb-w: 395px; /* four across */
-  --thumb-h: 222px;
+  --poster-w: 259px; /* six across plus five gaps fill the screen beside the rail */
+  --poster-h: 388px;
+  --thumb-w: 404px; /* four across */
+  --thumb-h: 227px;
   --person-w: 180px;
   --person-h: 270px;
-  --card-gap: 44px; /* between cards, across and down */
+  --card-gap: 32px; /* between cards, across and down */
   --shelf-gap: 32px; /* shelf title to its row of cards */
   --card-caption: 64px; /* title and one mono line under the artwork */
   --grid-columns: 6;
   --card-art-gap: 14px; /* artwork to title */
   --card-text-gap: 4px; /* title to year */
-  --hero: 600px; /* least height of the spotlight and the detail header */
+  --hero: 780px; /* least height of the spotlight and the detail header */
   --backdrop-w: 1920px; /* size requested for the hero's backdrop picture */
   --backdrop-h: 1080px;
   --hero-text: 900px;
@@ -91,7 +90,17 @@
   --badge: 44px;
   --overview-lines: 4;
   --overview-lines-short: 2;
-  --scrim: rgb(26 26 26 / 0.7); /* behind a drawer */
+  --scrim: rgb(26 26 26 / 0.7); /* behind the player's controls */
+  --scrim-light: rgb(26 26 26 / 0.35); /* behind a drawer, light enough for its glass to show what is under it */
+
+  /* Glass: a dark tint over a blur of what lies behind, with a hairline tan edge. Over the film
+     the tint is darker: webOS may draw video on its own plane, where the blur sees nothing, and
+     then the tint alone has to keep the text readable. */
+  --glass: rgb(38 38 38 / 0.55);
+  --glass-strong: rgb(26 26 26 / 0.72);
+  --glass-on: rgb(236 228 210 / 0.22); /* a toggled-on control on glass */
+  --glass-blur: blur(40px) saturate(1.4);
+  --glass-edge: inset 0 0 0 1px rgb(236 228 210 / 0.1);
 
   /* Subtitles: sizes and positions on the 1080p canvas, and the one place white is allowed
      (a viewer choice, for people who want it). The edge is drawn in the canvas color. */
@@ -109,15 +118,16 @@
   --sub-solid: #1a1a1a;
   --sub-soft: 0.85;
   --sub-dimmer: 0.65;
-  --preview-w: 768px;
-  --preview-h: 432px;
-  --preview-scale: 0.4;
+  --sub-list: 560px; /* the appearance editor's column of settings, beside its preview */
+  --preview-w: 1152px;
+  --preview-h: 648px;
+  --preview-scale: 0.6;
   --preview-canvas-w: 1920px; /* the stage the subtitle preview is drawn on, scaled down by the line above */
   --preview-canvas-h: 1080px;
 
   /* Radius: artwork is square. */
   --radius-small: 10px;
-  --radius-artwork: 0;
+  --radius-artwork: var(--radius-small); /* posters and thumbs match the buttons */
   --radius-card: 28px;
 
   /* Focus: the remote's position. Tan frame and a slight lift on artwork. */
@@ -137,15 +147,12 @@
    three wide cards across beside a 64 px rail. Only values change here; the rules are shared. */
 html[data-platform="android"] {
   --size-caption: 12px;
-  --size-small: 14px;
-  --size-body: 16px;
+  --size-body: 15px;
   --size-large: 20px;
-  --size-lead: 22px;
-  --size-title: 24px;
   --size-display: 32px;
   --size-code: 56px;
   --tracking-code: 6px;
-  --tracking-display: -0.5px;
+  --tracking-display: -0.8px;
 
   --space-xxs: 2px;
   --space-xs: 4px;
@@ -161,6 +168,7 @@ html[data-platform="android"] {
   --field-width: 420px;
   --measure: 560px;
   --icon: 22px;
+  --hint-room: 0px; /* icon buttons carry their label inline on the tablet */
   --mark-width: 120px;
   --mark-height: 21px;
 
@@ -198,14 +206,22 @@ html[data-platform="android"] {
   --sub-high: 140px;
   --sub-lift: 150px;
   --sub-edge: 2px;
-  --preview-w: 384px;
-  --preview-h: 216px;
-  --preview-scale: 0.4;
+  --sub-list: 300px;
+  --preview-w: 576px;
+  --preview-h: 324px;
+  --preview-scale: 0.6;
   --preview-canvas-w: 960px;
   --preview-canvas-h: 540px;
 
   --radius-small: 8px;
   --radius-card: 14px;
+
+  /* No blur on the tablet's small GPU: glass falls back to the plain wash and surface. */
+  --glass: var(--tint);
+  --glass-strong: var(--surface);
+  --glass-on: var(--tint-pressed);
+  --glass-blur: none;
+  --scrim-light: var(--scrim);
   --focus-ring: 2px;
   --focus-scale: 1;
 }

@@ -136,7 +136,7 @@ export function Account({ session, onSetupCheck, onSignOut }: Props) {
             Give Home back to Fire
           </Button>
         )}
-        <Button icon="subtitles" onPress={() => setStyling(true)}>
+        <Button icon="closed-captioning" onPress={() => setStyling(true)}>
           Subtitle appearance
         </Button>
         <Button icon="film-reel" onPress={() => setLists(true)}>

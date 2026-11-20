@@ -7,8 +7,12 @@
   height: 100%;
 }
 
-/* Rail: icon-only, centred on the left edge. The screen showing is washed; focus inverts. */
+/* Rail: icon-only, centred on the left edge. The screen showing is washed; focus inverts. While
+   the remote is on it, labels show beside the icons over a shade that covers the screen's edge.
+   z-index lifts it (and the shade) above the screen beside it. */
 .rail {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex: none;
   flex-direction: column;
@@ -17,7 +21,48 @@
   gap: var(--space-sm);
   width: var(--rail);
 }
+.rail::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--rail-open);
+  /* Glass that fades out to the right, so the open rail frosts the art behind its labels. */
+  background: linear-gradient(to right, var(--bg) 0%, var(--glass) 60%, transparent);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  -webkit-mask-image: linear-gradient(to right, var(--bg) 60%, transparent);
+  mask-image: linear-gradient(to right, var(--bg) 60%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--snappy) var(--ease-out);
+}
+.rail:focus-within::before {
+  opacity: 1;
+}
+.rail-label {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--space-md));
+  color: var(--ink-2);
+  font-family: var(--text);
+  font-size: var(--size-body);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity var(--snappy) var(--ease-out);
+}
+.rail:focus-within .rail-label {
+  opacity: 1;
+}
+.rail-item.is-active .rail-label,
+.rail-item:focus .rail-label {
+  color: var(--ink);
+}
 .rail-item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -70,7 +115,7 @@
 }
 .detail-note {
   padding: 0 var(--screen-inset) 0 var(--edge);
-  font-size: var(--size-small);
+  font-size: var(--size-body);
 }
 
 .screen-head {
@@ -201,8 +246,8 @@
   color: var(--on-ink);
 }
 .card-badge .icon {
-  width: var(--size-small);
-  height: var(--size-small);
+  width: var(--size-body);
+  height: var(--size-body);
 }
 .card-progress {
   position: absolute;
@@ -238,8 +283,17 @@
   white-space: nowrap;
   line-height: var(--leading-title);
 }
+/* On the TV a poster carries its own title, so its caption shows only while it has focus; the
+   space stays so nothing moves. The tablet has no focus and keeps every caption. */
+html:not([data-platform="android"]) .card-poster .card-text {
+  opacity: 0;
+  transition: opacity var(--snappy) var(--ease-out);
+}
+html:not([data-platform="android"]) .card-poster:focus .card-text {
+  opacity: 1;
+}
 .card-title {
-  font-size: var(--size-small);
+  font-size: var(--size-body);
 }
 .card-detail {
   color: var(--ink-2);
@@ -285,6 +339,22 @@
   object-fit: contain;
   object-position: left bottom;
 }
+/* The viewer's own marks: icon and short text, in full ink so they read as "yours" beside the
+   film's facts in ink-2. */
+.hero-seen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+}
+.hero-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.hero-mark .icon {
+  width: var(--size-caption);
+  height: var(--size-caption);
+}
 .hero-overview {
   display: -webkit-box;
   overflow: hidden;
@@ -296,6 +366,21 @@
 }
 .hero-actions {
   margin-top: var(--space-sm);
+  padding-bottom: var(--hint-room);
+}
+/* Buttons that sit on the backdrop are glass; focus still fills them tan. */
+.hero-actions .button {
+  background: var(--glass);
+  box-shadow: var(--glass-edge);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.hero-actions .button[aria-pressed="true"]:not(:focus) {
+  background: var(--glass-on);
+}
+.hero-actions .button:focus {
+  background: var(--ink);
+  box-shadow: none;
 }
 
 /* Shown while the server can't be reached and the screens hold saved copies. Doesn't take focus. */
@@ -305,7 +390,11 @@
   right: var(--space-lg);
   margin: 0;
   padding: var(--space-xs) var(--space-md);
-  background: var(--surface);
+  border-radius: var(--radius-small);
+  background: var(--glass);
+  box-shadow: var(--glass-edge);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   color: var(--ink-2);
   pointer-events: none;
 }

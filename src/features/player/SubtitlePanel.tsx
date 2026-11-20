@@ -22,13 +22,17 @@ interface Props {
   /// A subtitle was downloaded: reload the film's tracks and pick the new one.
   onDownloaded: () => Promise<void>;
   onClose: () => void;
+  /// Audio tracks, listed above the subtitles when there is more than one to choose from.
+  audio?: { index: number; label: string }[];
+  audioIndex?: number;
+  onAudio?: (index: number) => void;
 }
 
 type View = "tracks" | "language" | "results";
 
 /// The subtitle drawer: choose a track (or Off), sync it, open Appearance, or search the
 /// server's subtitle plugin and download a new one.
-export function SubtitlePanel({ session, itemId, tracks, selected, offset, onSelect, onOffset, onAppearance, onDownloaded, onClose }: Props) {
+export function SubtitlePanel({ session, itemId, tracks, selected, offset, onSelect, onOffset, onAppearance, onDownloaded, onClose, audio = [], audioIndex, onAudio }: Props) {
   const [view, setView] = useState<View>("tracks");
   const [found, setFound] = useState<Found[] | null>(null);
   const [message, setMessage] = useState("");
@@ -109,8 +113,20 @@ export function SubtitlePanel({ session, itemId, tracks, selected, offset, onSel
   }
 
   return (
-    <Drawer title="Subtitles" onClose={onClose}>
+    <Drawer title={audio.length > 1 ? "Audio & Subtitles" : "Subtitles"} onClose={onClose}>
       <div class="drawer-list" data-scroll="y" data-focus-group>
+        {audio.length > 1 && (
+          <>
+            <p class="secondary drawer-note">Audio</p>
+            {audio.map((track) => (
+              <button key={track.index} class="button drawer-option" type="button" data-focusable tabIndex={-1} onClick={() => { onAudio?.(track.index); onClose(); }}>
+                <span class="drawer-label">{track.label}</span>
+                {track.index === audioIndex && <Icon name="check" />}
+              </button>
+            ))}
+            <p class="secondary drawer-note">Subtitles</p>
+          </>
+        )}
         <button class="button drawer-option" type="button" data-focusable data-autofocus={selected === null || undefined} tabIndex={-1} onClick={() => { onSelect(null); onClose(); }}>
           <span class="drawer-label">Off</span>
           {selected === null && <Icon name="check" />}
@@ -132,14 +148,17 @@ export function SubtitlePanel({ session, itemId, tracks, selected, offset, onSel
             </Button>
           </div>
         )}
+        {/* After nudging the sync there is nothing to pick that would close the panel. */}
+        {drawn && (
+          <Button icon="check" onPress={onClose}>
+            Done
+          </Button>
+        )}
         <Button icon="magnifying-glass" onPress={() => setView("language")}>
           Search for subtitles
         </Button>
-        <Button icon="subtitles" onPress={onAppearance}>
+        <Button icon="closed-captioning" onPress={onAppearance}>
           Appearance
-        </Button>
-        <Button icon="check" onPress={onClose}>
-          Done
         </Button>
       </div>
     </Drawer>

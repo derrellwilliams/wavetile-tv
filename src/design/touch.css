@@ -45,6 +45,11 @@ html[data-platform="android"] .card:focus .card-art {
 html[data-platform="android"] .card:active .card-art {
   transform: scale(var(--press-scale));
 }
+/* No glass on the tablet: the drawer is the solid surface. */
+html[data-platform="android"] .drawer {
+  background: var(--surface);
+  box-shadow: none;
+}
 html[data-platform="android"] .about {
   max-width: 100%;
 }
@@ -102,6 +107,24 @@ html[data-platform="android"] .player-toggle {
 html[data-platform="android"] .player .seek {
   height: var(--control);
   touch-action: none;
+}
+
+/* Icon buttons on the tablet: no focus to reveal a label, so it sits beside the icon as on any
+   button. The rail's labels are the TV's only. */
+html[data-platform="android"] .button.is-icon {
+  width: auto;
+  padding: 0 var(--space-lg);
+}
+html[data-platform="android"] .button-hint {
+  position: static;
+  color: inherit;
+  font-size: inherit;
+  opacity: 1;
+  transform: none;
+}
+html[data-platform="android"] .rail-label,
+html[data-platform="android"] .rail::before {
+  display: none;
 }
 
 /* Segments on the tablet: no lingering focus fill, just the chosen chip and press feedback. */

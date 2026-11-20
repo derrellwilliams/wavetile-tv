@@ -15,16 +15,20 @@ interface Props {
   on?: boolean;
   /// Called when OK (or the pointer) is held down; a short press still calls `onPress`.
   onHold?: () => void;
+  /// Draws the icon alone; the label (children, plain text) shows under it while it has focus.
+  /// The tablet, which has no focus, shows the label beside the icon instead.
+  iconOnly?: boolean;
 }
 
 /// The app's one button. Focus (remote or pointer) inverts it to a tan fill.
-export function Button({ children, onPress, icon, autoFocus, disabled, on, onHold }: Props) {
+export function Button({ children, onPress, icon, autoFocus, disabled, on, onHold, iconOnly }: Props) {
   const press = useHold(onHold, () => {
     if (!disabled) onPress();
   });
   return (
     <button
-      class="button"
+      class={iconOnly && icon ? "button is-icon" : "button"}
+      aria-label={iconOnly && icon && typeof children === "string" ? children : undefined}
       type="button"
       data-focusable
       data-autofocus={autoFocus || undefined}
@@ -34,7 +38,7 @@ export function Button({ children, onPress, icon, autoFocus, disabled, on, onHol
       {...press}
     >
       {icon && <Icon name={icon} />}
-      {children}
+      {iconOnly && icon ? <span class="button-hint">{children}</span> : children}
     </button>
   );
 }

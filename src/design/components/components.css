@@ -52,6 +52,36 @@
   opacity: var(--unavailable);
 }
 
+/* Icon button: a square with the icon alone. Its label sits under it, shown only while it has
+   focus, so a row of them reads as a quiet strip until the remote is on one. The row leaves
+   --hint-room below for it. */
+.button.is-icon {
+  position: relative;
+  justify-content: center;
+  width: var(--control);
+  padding: 0;
+}
+.button-hint {
+  position: absolute;
+  top: calc(100% + var(--space-xs));
+  left: 50%;
+  color: var(--ink);
+  font-size: var(--size-caption);
+  line-height: var(--leading-title);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity var(--snappy) var(--ease-out);
+}
+.button.is-icon:focus .button-hint {
+  opacity: 1;
+}
+/* A value on the right of a drawer row stays readable when the row inverts. */
+.drawer-option:focus .secondary {
+  color: var(--on-ink);
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -166,7 +196,7 @@
   position: fixed;
   inset: 0;
   z-index: 10;
-  background: var(--scrim);
+  background: var(--scrim-light);
   animation: fade-in var(--snappy) var(--ease-out);
 }
 .drawer {
@@ -178,7 +208,10 @@
   flex-direction: column;
   width: var(--drawer);
   padding: var(--space-xxl) var(--space-lg);
-  background: var(--surface);
+  background: var(--glass);
+  box-shadow: var(--glass-edge);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   animation: slide-in var(--smooth) var(--ease-out);
 }
 .drawer-title {
@@ -199,6 +232,9 @@
   justify-content: space-between;
   width: 100%;
   background: none;
+}
+.drawer-value {
+  flex: none;
 }
 .drawer-label {
   overflow: hidden;

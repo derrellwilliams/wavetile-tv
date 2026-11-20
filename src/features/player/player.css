@@ -53,6 +53,7 @@
 }
 .player-buttons {
   flex-wrap: wrap;
+  padding-bottom: var(--hint-room);
 }
 .seek {
   position: relative;
@@ -200,23 +201,43 @@
   text-decoration: underline;
 }
 
-/* Appearance editor: a preview of the film frame at reduced scale, with the choices beside it. */
+/* Appearance editor: the title across the top, then a column of settings on the left and a large
+   preview of the film frame beside it, both starting on the same line. Each row is a setting on
+   the left and its value on the right; OK moves it to the next value. */
 .sub-editor {
   position: fixed;
   inset: 0;
   z-index: 25;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-md);
+  display: grid;
+  grid-template-columns: var(--sub-list) var(--preview-w);
+  grid-template-rows: auto 1fr;
+  align-content: start;
+  gap: var(--space-xl) var(--space-xxl);
   padding: var(--space-xxl) var(--screen-inset);
   background: var(--bg);
 }
+.sub-editor-title {
+  grid-column: 1 / -1;
+}
+.sub-editor-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
 .sub-stage {
+  position: relative;
   width: var(--preview-w);
   height: var(--preview-h);
   overflow: hidden;
+  border-radius: var(--radius-small);
   background: var(--placeholder);
+}
+.sub-stage-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .sub-stage-inner {
   position: relative;
@@ -226,13 +247,24 @@
   transform-origin: top left;
 }
 .sub-options {
-  display: grid;
-  grid-template-columns: repeat(3, auto);
-  gap: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
 }
 .sub-options .button {
   justify-content: space-between;
-  gap: var(--space-lg);
+  width: 100%;
+  background: none;
+}
+.sub-options .button:focus {
+  background: var(--ink);
+}
+.sub-options .button:focus .secondary {
+  color: var(--on-ink);
+}
+.sub-editor-actions .button {
+  flex: 1;
+  justify-content: center;
 }
 
 .drawer-note {
@@ -303,11 +335,25 @@
 }
 .player-top h1,
 .player-top p,
-.player-times {
+.player-times,
+.player .button-hint {
   text-shadow: 0 1px 4px #000;
 }
 .seek-track {
   background: rgb(236 228 210 / 0.4);
+}
+
+/* Drawers over the film: darker glass (see --glass-strong), and their rows look as in any other
+   drawer, not like the OSD's buttons over the picture. */
+.player .drawer {
+  background: var(--glass-strong);
+}
+.player .drawer .button:not(:focus) {
+  background: var(--tint);
+  box-shadow: none;
+}
+.player .drawer .drawer-option:not(:focus) {
+  background: none;
 }
 
 /* The tablet's touch rules (touch.css) restyle .button:focus, :active and [aria-pressed] with the

@@ -12,7 +12,7 @@ import { Hero } from "../browse/Hero";
 import { ItemShelf, Shelf } from "../browse/Shelf";
 import { Unreachable } from "../browse/Status";
 import { averages, wantAverage } from "../../letterboxd/average";
-import { describeSeen, useMarks } from "../../letterboxd/marks";
+import { seenMarks, useMarks } from "../../letterboxd/marks";
 import { watchLog } from "../../letterboxd/store";
 import { isKidsShow, overrides, setKids } from "../kids/kids";
 import { useEnter } from "../shell/enter";
@@ -151,48 +151,48 @@ export function Detail({ id }: { id: string }) {
   return (
     <>
       <div ref={screen} class="detail" data-scroll="y">
-        <Hero item={item} full average={tmdb ? averages.value.get(tmdb)?.rating : undefined} notes={[describeSeen(mine.get(item.id))]}>
+        <Hero item={item} full average={tmdb ? averages.value.get(tmdb)?.rating : undefined} seen={seenMarks(mine.get(item.id))}>
           {(playable || type === "Series") && (
             <Button icon="play" onPress={() => void start(item.progress ? true : false)} autoFocus>
               {item.progress ? "Resume" : "Play"}
             </Button>
           )}
           {playable && item.progress && (
-            <Button icon="arrow-counter-clockwise" onPress={() => play(id, false, choice ?? undefined)}>
-              Restart
+            <Button icon="arrow-counter-clockwise" iconOnly onPress={() => play(id, false, choice ?? undefined)}>
+              Start over
             </Button>
           )}
           {/* Movies take watched from Letterboxd, so Jellyfin's own toggle is hidden once a log is loaded. */}
           {hasSubs && (
-            <Button icon="subtitles" on={!!choice} onPress={() => setPicking(true)}>
+            <Button icon="closed-captioning" iconOnly on={!!choice} onPress={() => setPicking(true)}>
               {`Subtitles · ${describeChoice(tracks, choice)}`}
             </Button>
           )}
           {isAndroid && playable && (
-            <Button icon={copy?.state === "done" ? "check" : "download-simple"} on={copy?.state === "done"} onPress={onSave}>
+            <Button icon="download-simple" iconOnly on={copy?.state === "done"} onPress={onSave}>
               {saveLabel}
             </Button>
           )}
           {isAndroid && type === "Series" && (
-            <Button icon="download-simple" onPress={() => setSaving("show")}>
+            <Button icon="download-simple" iconOnly onPress={() => setSaving("show")}>
               Download
             </Button>
           )}
           {watchable && !(type === "Movie" && watchLog.value.length > 0) && (
-            <Button icon={state.played ? "check" : "eye"} on={state.played} onPress={() => void toggle("played")} autoFocus={!playable && type !== "Series"}>
-              Watched
+            <Button icon="eye" iconOnly on={state.played} onPress={() => void toggle("played")} autoFocus={!playable && type !== "Series"}>
+              {state.played ? "Watched" : "Mark as watched"}
             </Button>
           )}
-          <Button icon={state.favorite ? "check" : "heart"} on={state.favorite} onPress={() => void toggle("favorite")} autoFocus={!watchable && !playable}>
-            Favorite
+          <Button icon="heart" iconOnly on={state.favorite} onPress={() => void toggle("favorite")} autoFocus={!watchable && !playable}>
+            {state.favorite ? "In Favorites" : "Add to Favorites"}
           </Button>
           {type === "Series" && (
-            <Button icon={isKidsShow(item, overrides.value) ? "check" : "balloon"} on={isKidsShow(item, overrides.value)} onPress={() => setKids(item, !isKidsShow(item, overrides.value))}>
-              Kids
+            <Button icon="balloon" iconOnly on={isKidsShow(item, overrides.value)} onPress={() => setKids(item, !isKidsShow(item, overrides.value))}>
+              {isKidsShow(item, overrides.value) ? "On the Kids tab" : "Show on the Kids tab"}
             </Button>
           )}
           {seriesId && (
-            <Button icon="television-simple" onPress={() => openItem({ id: seriesId })}>
+            <Button icon="television-simple" iconOnly onPress={() => openItem({ id: seriesId })}>
               Go to show
             </Button>
           )}

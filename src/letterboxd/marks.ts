@@ -41,14 +41,37 @@ export function withFeed(base: Map<string, Seen>, library: readonly Item[], rece
   return out;
 }
 
-/// One line about a film for its detail page, or null when the log has nothing on it.
-export function describeSeen(film: { watched: boolean; rating?: number; last?: string; rewatches: number; watchlist: boolean } | undefined): string | null {
-  if (!film) return null;
-  const parts: string[] = [];
-  if (film.rating !== undefined) parts.push(`You rated it ${film.rating} of 5`);
-  if (film.watched && film.last) parts.push(`watched ${film.last}`);
-  else if (film.watched && film.rating === undefined) parts.push("You've watched it");
-  if (film.rewatches > 0) parts.push(`${film.rewatches} rewatch${film.rewatches === 1 ? "" : "es"}`);
-  if (film.watchlist) parts.push("On your watchlist");
-  return parts.length ? `Letterboxd: ${parts.join("  ·  ")}` : null;
+/// One mark of the viewer's own history with a film: an icon, a short text beside it, and the
+/// full sentence for screen readers.
+export interface SeenMark {
+  icon: "star" | "eye" | "arrow-clockwise" | "bookmark-simple";
+  text: string;
+  label: string;
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/// "Oct 31" this year, "Oct 31, 2024" before it. `date` is the log's YYYY-MM-DD; anything else
+/// is shown as it is.
+export function shortDate(date: string, thisYear = new Date().getFullYear()): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  const month = match ? MONTHS[Number(match[2]) - 1] : undefined;
+  if (!match || !month) return date;
+  const day = `${month} ${Number(match[3])}`;
+  return Number(match[1]) === thisYear ? day : `${day}, ${match[1]}`;
+}
+
+/// The viewer's own marks for a film's detail page (their rating, when they last watched it,
+/// rewatches, the watchlist); empty when the log has nothing on it.
+export function seenMarks(film: { watched: boolean; rating?: number; last?: string; rewatches: number; watchlist: boolean } | undefined, thisYear?: number): SeenMark[] {
+  if (!film) return [];
+  const marks: SeenMark[] = [];
+  if (film.rating !== undefined) marks.push({ icon: "star", text: String(film.rating), label: `You rated it ${film.rating} of 5` });
+  if (film.watched) {
+    const when = film.last ? shortDate(film.last, thisYear) : "";
+    marks.push({ icon: "eye", text: when || "Watched", label: when ? `Watched ${when}` : "Watched" });
+  }
+  if (film.rewatches > 0) marks.push({ icon: "arrow-clockwise", text: `${film.rewatches}×`, label: `Rewatched ${film.rewatches} time${film.rewatches === 1 ? "" : "s"}` });
+  if (film.watchlist) marks.push({ icon: "bookmark-simple", text: "Watchlist", label: "On your watchlist" });
+  return marks;
 }

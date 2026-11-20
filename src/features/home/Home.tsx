@@ -63,7 +63,6 @@ export function Home() {
     const timer = setTimeout(() => setTurn(at + 1), SPOTLIGHT_MS);
     return () => clearTimeout(timer);
   }, [carousel.length, at]);
-  const step = (by: number) => setTurn((at + by + carousel.length) % carousel.length);
 
   const all = [watching, next, loved, library];
   const ready = all.some((shelf) => shelf.data !== undefined);
@@ -99,25 +98,16 @@ export function Home() {
               </Button>
             )}
             <Button
-              icon="arrow-right"
+              icon="info"
+              iconOnly
               onPress={() => openItem(spotlight)}
               autoFocus={spotlight.type !== "Movie" && spotlight.type !== "Episode"}
             >
               Details
             </Button>
-            {carousel.length > 1 && (
-              <>
-                <Button icon="arrow-left" onPress={() => step(-1)}>
-                  Previous
-                </Button>
-                <Button icon="arrow-right" onPress={() => step(1)}>
-                  Next
-                </Button>
-              </>
-            )}
           </Hero>
         )}
-        <ItemShelf title="Not Watched Movies" items={unseen} shape="poster" onOpen={openItem} onHold={menu.ask} />
+        <ItemShelf title="New to You" items={unseen} shape="poster" onOpen={openItem} onHold={menu.ask} />
         <ItemShelf title="Up Next" items={upNext} shape="thumb" onOpen={openItem} onHold={menu.ask} />
         <ItemShelf title="Recently Added" items={added} shape="poster" onOpen={openItem} onHold={menu.ask} />
         <ItemShelf title="Favorites" items={favorite} shape="poster" onOpen={openItem} onHold={menu.ask} />

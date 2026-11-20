@@ -9,6 +9,7 @@ import { startPosition, type Saved } from "../../downloads/plan";
 import { loadNative } from "../../platform/native-load";
 import { Button } from "../../design/components/Button";
 import { Icon } from "../../design/components/Icon";
+import { Drawer } from "../../design/components/Drawer";
 import { Menu } from "../../design/components/Menu";
 import { focusIfUsable, onKey, pushScope } from "../../nav/focus";
 import { useBack } from "../../nav/hooks";
@@ -67,7 +68,7 @@ function subButtonLabel(track: { label: string; language?: string } | undefined)
   return `Subtitles · ${name.length > 18 ? name.slice(0, 17) + "…" : name}`;
 }
 
-type Menus = "audio" | "speed" | "subs" | "style" | "chapters" | "quality" | "version" | null;
+type Menus = "settings" | "speed" | "subs" | "style" | "chapters" | "quality" | "version" | null;
 
 /// Full-screen playback. The OSD (title, controls, seek bar) shows on Up, Down, a pointer move or
 /// a pause and hides itself; while it is hidden Left and Right seek and OK pauses. Progress goes
@@ -315,11 +316,11 @@ export function Player({ id, resume, subtitle: chosen, onClose, onNext }: Props)
     wake();
   }, [paused]);
 
-  // When the OSD appears, focus lands on the play button; when it goes, focus is nowhere (keys
-  // are handled by the capture below).
+  // When the OSD appears, focus lands on the seek bar (OK pauses, Left and Right seek); when it
+  // goes, focus is nowhere (keys are handled by the capture below).
   useEffect(() => {
     if (osd && !menu) {
-      if (!root.current?.contains(document.activeElement) || document.activeElement === root.current) focusIfUsable(root.current?.querySelector("[data-play]"));
+      if (!root.current?.contains(document.activeElement) || document.activeElement === root.current) focusIfUsable(root.current?.querySelector("[data-seekbar]"));
     } else if (!osd && !menu) {
       (document.activeElement as HTMLElement | null)?.blur();
     }
@@ -628,6 +629,7 @@ export function Player({ id, resume, subtitle: chosen, onClose, onNext }: Props)
     setMenu(null);
     wake();
   };
+  const toSettings = () => setMenu("settings");
   const lines = useActiveLines(video, sub !== null && live.current.plan?.source.subs.find((track) => track.index === sub)?.text ? cues : [], offset);
   const element = video.current;
   const shown = scrub ?? time;
@@ -705,86 +707,56 @@ export function Player({ id, resume, subtitle: chosen, onClose, onNext }: Props)
       )}
 
       <div class="player-bottom" hidden={!(osd || paused) || !!error}>
-        <div class="row player-buttons" data-focus-group>
-          {input.dpad && (
-            <>
-              <button class="button" type="button" data-focusable data-play tabIndex={-1} onClick={toggle}>
-                <Icon name={paused ? "play" : "pause"} />
-                {paused ? "Play" : "Pause"}
-              </button>
-              <Button icon="arrow-counter-clockwise" onPress={() => scrubBy(-1, 0)}>
-                10 s
-              </Button>
-              <Button icon="arrow-clockwise" onPress={() => scrubBy(1, 0)}>
-                10 s
-              </Button>
-            </>
-          )}
-          {audioTracks.length > 1 && (
-            <Button icon="speaker-high" onPress={() => setMenu("audio")}>
-              Audio
-            </Button>
-          )}
-          <Button icon={sub !== null ? "check" : "subtitles"} on={sub !== null} onPress={() => setMenu("subs")}>
-            {subButtonLabel(active?.source.subs.find((track) => track.index === sub))}
-          </Button>
-          {(item?.chapters?.length ?? 0) > 1 && (
-            <Button icon="list-bullets" onPress={() => setMenu("chapters")}>
-              Chapters
-            </Button>
-          )}
-          {!active?.local && (
-            <Button icon="sliders-horizontal" onPress={() => setMenu("quality")}>
-              Quality
-            </Button>
-          )}
-          {(active?.versions.length ?? 0) > 1 && (
-            <Button icon="film-strip" onPress={() => setMenu("version")}>
-              Version
-            </Button>
-          )}
-          <Button icon="gauge" onPress={() => setMenu("speed")}>
-            {speed === 1 ? "Speed" : `${speed}×`}
-          </Button>
-          <Button icon={stats ? "check" : "info"} on={stats} onPress={() => setStats(!stats)}>
-            Stats
-          </Button>
-          {next && (
-            <Button icon="skip-forward" onPress={() => playNext(next)}>
-              Next episode
-            </Button>
-          )}
-        </div>
-        <div
-          class="seek"
-          data-focusable
-          data-seekbar
-          tabIndex={-1}
-          onPointerDown={(event) => {
-            if (!total) return;
-            dragging.current = true;
-            event.currentTarget.setPointerCapture(event.pointerId);
-            clearTimeout(scrubTimer.current);
-            dragMove(event);
-          }}
-          onPointerMove={dragMove}
-          onPointerUp={(event) => dragEnd(event, true)}
-          onPointerCancel={(event) => dragEnd(event, false)}
-        >
-          {thumb && thumbSrc && trick && (
-            <div class="seek-thumb" style={{ left: `${fraction * 100}%` }}>
-              <div class="seek-picture" style={{ width: `${trick.width}px`, height: `${trick.height}px`, backgroundImage: `url("${thumbSrc}")`, backgroundPosition: `-${thumb.x}px -${thumb.y}px` }} />
+        <div data-focus-group>
+          <div
+            class="seek"
+            data-focusable
+            data-seekbar
+            tabIndex={-1}
+            onPointerDown={(event) => {
+              if (!total) return;
+              dragging.current = true;
+              event.currentTarget.setPointerCapture(event.pointerId);
+              clearTimeout(scrubTimer.current);
+              dragMove(event);
+            }}
+            onPointerMove={dragMove}
+            onPointerUp={(event) => dragEnd(event, true)}
+            onPointerCancel={(event) => dragEnd(event, false)}
+          >
+            {thumb && thumbSrc && trick && (
+              <div class="seek-thumb" style={{ left: `${fraction * 100}%` }}>
+                <div class="seek-picture" style={{ width: `${trick.width}px`, height: `${trick.height}px`, backgroundImage: `url("${thumbSrc}")`, backgroundPosition: `-${thumb.x}px -${thumb.y}px` }} />
+              </div>
+            )}
+            <div class="seek-track">
+              <div class="seek-fill" style={{ transform: `scaleX(${fraction})` }} />
+              {total > 0 && chapters.slice(1).map((chapter) => <span key={chapter.start} class="seek-mark" style={{ left: `${Math.min(100, (chapter.start / total) * 100)}%` }} />)}
             </div>
-          )}
-          <div class="seek-track">
-            <div class="seek-fill" style={{ transform: `scaleX(${fraction})` }} />
-            {total > 0 && chapters.slice(1).map((chapter) => <span key={chapter.start} class="seek-mark" style={{ left: `${Math.min(100, (chapter.start / total) * 100)}%` }} />)}
           </div>
         </div>
         <div class="row player-times mono">
           <span>{clock(shown)}</span>
           {chapterName && <span class="secondary player-chapter">{chapterName}</span>}
           <span class="secondary">-{clock(Math.max(0, total - shown))}</span>
+        </div>
+        <div class="row player-buttons" data-focus-group>
+          <Button icon="closed-captioning" iconOnly on={sub !== null} onPress={() => setMenu("subs")}>
+            {audioTracks.length > 1 ? "Audio & Subtitles" : subButtonLabel(active?.source.subs.find((track) => track.index === sub))}
+          </Button>
+          {chapters.length > 1 && (
+            <Button icon="list-bullets" iconOnly onPress={() => setMenu("chapters")}>
+              Chapters
+            </Button>
+          )}
+          <Button icon="gear-six" iconOnly onPress={() => setMenu("settings")}>
+            Settings
+          </Button>
+          {next && (
+            <Button icon="skip-forward" iconOnly onPress={() => playNext(next)}>
+              Next episode
+            </Button>
+          )}
         </div>
       </div>
 
@@ -826,14 +798,19 @@ export function Player({ id, resume, subtitle: chosen, onClose, onNext }: Props)
         </div>
       )}
 
-      {menu === "audio" && active && (
-        <Menu
-          title="Audio"
-          options={audioTracks.map((track) => ({ id: String(track.index), label: track.label }))}
-          value={String(active.audioIndex ?? "")}
-          onPick={(value) => void chooseAudio(Number(value))}
-          onClose={closeMenu}
-        />
+      {menu === "settings" && (
+        <Drawer title="Settings" onClose={closeMenu}>
+          <div class="drawer-list" data-scroll="y" data-focus-group>
+            {!active?.local && (
+              <SettingRow label="Quality" value={QUALITIES.find((entry) => entry.id === quality)?.label ?? ""} onPress={() => setMenu("quality")} />
+            )}
+            {active && active.versions.length > 1 && (
+              <SettingRow label="Version" value={active.versions.find((entry) => entry.id === active.source.id)?.label ?? ""} onPress={() => setMenu("version")} />
+            )}
+            <SettingRow label="Speed" value={speed === 1 ? "Normal" : `${speed}×`} onPress={() => setMenu("speed")} />
+            <SettingRow label="Playback info" value={stats ? "On" : "Off"} onPress={() => setStats(!stats)} />
+          </div>
+        </Drawer>
       )}
       {menu === "chapters" && (
         <Menu
@@ -856,6 +833,7 @@ export function Player({ id, resume, subtitle: chosen, onClose, onNext }: Props)
             void restart({ quality: value });
           }}
           onClose={closeMenu}
+          onBack={toSettings}
         />
       )}
       {menu === "version" && active && (
@@ -865,6 +843,7 @@ export function Player({ id, resume, subtitle: chosen, onClose, onNext }: Props)
           value={active.source.id}
           onPick={(value) => value !== active.source.id && void restart({ sourceId: value })}
           onClose={closeMenu}
+          onBack={toSettings}
         />
       )}
       {menu === "subs" && active && current.value && (
@@ -883,9 +862,12 @@ export function Player({ id, resume, subtitle: chosen, onClose, onNext }: Props)
           onAppearance={() => setMenu("style")}
           onDownloaded={refreshSubs}
           onClose={closeMenu}
+          audio={audioTracks}
+          audioIndex={active.audioIndex}
+          onAudio={(index) => void chooseAudio(index)}
         />
       )}
-      {menu === "style" && <SubtitleStyle onClose={() => setMenu("subs")} />}
+      {menu === "style" && <SubtitleStyle picture={item?.backdrop ?? item?.thumb} onClose={() => setMenu("subs")} />}
       {menu === "speed" && (
         <Menu
           title="Speed"
@@ -896,8 +878,19 @@ export function Player({ id, resume, subtitle: chosen, onClose, onNext }: Props)
             if (element) element.playbackRate = Number(value);
           }}
           onClose={closeMenu}
+          onBack={toSettings}
         />
       )}
     </div>
+  );
+}
+
+/// A row of the player's Settings sheet: what it sets, and its value on the right.
+function SettingRow({ label, value, onPress }: { label: string; value: string; onPress: () => void }) {
+  return (
+    <button class="button drawer-option" type="button" data-focusable tabIndex={-1} onClick={onPress}>
+      <span class="drawer-label">{label}</span>
+      <span class="drawer-value mono secondary">{value}</span>
+    </button>
   );
 }

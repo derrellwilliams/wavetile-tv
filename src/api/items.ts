@@ -258,9 +258,9 @@ export function facts(item: Item, average?: number | null): string[] {
   if (years(item)) list.push(years(item));
   if (item.minutes && item.type !== "Series") list.push(runtime(item.minutes));
   if (item.certificate) list.push(item.certificate);
-  const stars = average ? average.toFixed(1) : "";
-  if (item.rating) list.push(`${item.rating.toFixed(1)}/10${stars ? ` • ${stars}` : ""}`);
-  else if (stars) list.push(`Letterboxd ${stars}`);
+  // One public score: Letterboxd's average (out of 5) when it is known, else the server's (out of 10).
+  if (average) list.push(`${average.toFixed(1)}/5`);
+  else if (item.rating) list.push(`${item.rating.toFixed(1)}/10`);
   return list;
 }
 

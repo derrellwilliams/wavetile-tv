@@ -63,5 +63,5 @@ p {
 }
 .mono {
   font-family: var(--mono);
-  font-size: var(--size-small);
+  font-size: var(--size-caption);
 }

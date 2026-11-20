@@ -72,6 +72,9 @@ export default defineConfig(({ mode }) => {
       output: { format: "iife" },
     },
   },
+  // Dev server only: check files on a timer. Where file-system events don't reach Vite (a sandboxed
+  // Claude session), edits otherwise go unnoticed until the server restarts.
+  server: { watch: { usePolling: true, interval: 300 } },
   test: { include: ["src/**/*.test.ts", "service/**/*.test.js", "scripts/**/*.test.mjs"] },
   };
 });

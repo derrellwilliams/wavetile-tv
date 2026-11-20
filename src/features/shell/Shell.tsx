@@ -140,6 +140,7 @@ export function Shell({ session, onSetupCheck, onSignOut }: Props) {
             }}
           >
             <Icon name={entry.icon} />
+            <span class="rail-label">{entry.label}</span>
           </button>
         ))}
       </nav>
