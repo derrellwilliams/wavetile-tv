@@ -30,15 +30,17 @@
   width: var(--rail-open);
   /* Glass that fades out to the right, so the open rail frosts the art behind its labels. */
   background: linear-gradient(to right, var(--bg) 0%, var(--glass) 60%, transparent);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  -webkit-mask-image: linear-gradient(to right, var(--bg) 60%, transparent);
-  mask-image: linear-gradient(to right, var(--bg) 60%, transparent);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--snappy) var(--ease-out);
 }
+/* The blur is only set while the rail is open: an idle blurred layer at the rail's edge showed
+   as a thin seam between the rail and the screen. */
 .rail:focus-within::before {
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  -webkit-mask-image: linear-gradient(to right, var(--bg) 60%, transparent);
+  mask-image: linear-gradient(to right, var(--bg) 60%, transparent);
   opacity: 1;
 }
 .rail-label {
@@ -233,17 +235,22 @@
   height: 100%;
   object-fit: cover;
 }
+/* Watched: a small dark glass tile inset from the corner, the check in tan. */
 .card-badge {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: var(--space-xs);
+  right: var(--space-xs);
   display: flex;
   align-items: center;
   justify-content: center;
   width: var(--badge);
   height: var(--badge);
-  background: var(--ink);
-  color: var(--on-ink);
+  border-radius: var(--radius-small);
+  background: var(--glass-strong);
+  box-shadow: var(--glass-edge);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  color: var(--ink);
 }
 .card-badge .icon {
   width: var(--size-body);
@@ -301,7 +308,9 @@ html:not([data-platform="android"]) .card-poster:focus .card-text {
   font-size: var(--size-caption);
 }
 
-/* Hero: the backdrop fades into the canvas on the left and at the bottom, where the text sits. */
+/* Hero: the backdrop fades into the canvas on the left and at the bottom, where the text sits.
+   The picture itself fades (a mask), rather than a shade laid over it: a shade's edge and the
+   picture's edge met on the same pixel and showed as a thin light line on scaled screens. */
 .hero {
   position: relative;
   display: flex;
@@ -317,13 +326,16 @@ html:not([data-platform="android"]) .card-poster:focus .card-text {
   height: 100%;
   object-fit: cover;
   object-position: center top;
-}
-.hero-shade {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(to right, var(--bg) 0%, var(--bg) 15%, transparent 80%),
-    linear-gradient(to top, var(--bg) 0%, transparent 50%);
+  /* The two fades multiply, as the two layers of the old shade did. Any opaque colour works in a
+     mask; only its alpha counts. */
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 15%, var(--bg) 80%),
+    linear-gradient(to top, transparent, var(--bg) 50%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 15%, var(--bg) 80%),
+    linear-gradient(to top, transparent, var(--bg) 50%);
+  mask-composite: intersect;
 }
 .hero-body {
   position: relative;
@@ -368,12 +380,12 @@ html:not([data-platform="android"]) .card-poster:focus .card-text {
   margin-top: var(--space-sm);
   padding-bottom: var(--hint-room);
 }
-/* Buttons that sit on the backdrop are glass; focus still fills them tan. */
+/* Buttons that sit on the backdrop take the glass tint and edge; focus still fills them tan. No
+   blur here: a blurred element inside the screen's clipping box drew a hairline along the
+   screen's left edge in Chrome. */
 .hero-actions .button {
   background: var(--glass);
   box-shadow: var(--glass-edge);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
 }
 .hero-actions .button[aria-pressed="true"]:not(:focus) {
   background: var(--glass-on);

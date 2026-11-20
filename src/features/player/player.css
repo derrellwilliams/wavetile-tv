@@ -44,11 +44,14 @@
   top: 0;
   background: linear-gradient(to bottom, var(--scrim), transparent);
 }
+/* The bottom bar is kept tight: bar, times and buttons close together, and only the hint's room
+   plus a small margin under the buttons. */
 .player-bottom {
   bottom: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-xs);
+  padding-bottom: var(--space-md);
   background: linear-gradient(to top, var(--scrim), transparent);
 }
 .player-buttons {
@@ -210,11 +213,22 @@
   z-index: 25;
   display: grid;
   grid-template-columns: var(--sub-list) var(--preview-w);
-  grid-template-rows: auto 1fr;
-  align-content: start;
+  grid-template-rows: auto auto;
+  place-content: center;
+  align-items: start;
   gap: var(--space-xl) var(--space-xxl);
   padding: var(--space-xxl) var(--screen-inset);
-  background: var(--bg);
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+/* Rows sit on the glass like a drawer's, not like the OSD's buttons over the picture. */
+.sub-editor .button:not(:focus) {
+  background: var(--tint);
+  box-shadow: none;
+}
+.sub-editor .sub-options .button:not(:focus) {
+  background: none;
 }
 .sub-editor-title {
   grid-column: 1 / -1;

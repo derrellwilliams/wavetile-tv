@@ -38,7 +38,6 @@ export function Hero({ item, full, kicker, seen, average, children }: Props) {
           onLoad={(event) => event.currentTarget.classList.add("is-loaded")}
         />
       )}
-      <div class="hero-shade" />
       <div class="hero-body">
         {kicker && <p class="secondary">{kicker}</p>}
         {logo ? <img key={logo} class="hero-logo" src={logo} alt={heading} /> : <h1 class="display">{heading}</h1>}
