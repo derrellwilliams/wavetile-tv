@@ -185,7 +185,7 @@ html[data-platform="android"] {
   --grid-columns: 5;
   --card-art-gap: 8px;
   --card-text-gap: 2px;
-  --hero: 280px;
+  --hero: 430px; /* 600 tall: the first shelf shows its title and half its posters below, as on the TV */
   --backdrop-w: 960px;
   --backdrop-h: 540px;
   --hero-text: 520px;

@@ -148,12 +148,6 @@ export function SubtitlePanel({ session, itemId, tracks, selected, offset, onSel
             </Button>
           </div>
         )}
-        {/* After nudging the sync there is nothing to pick that would close the panel. */}
-        {drawn && (
-          <Button icon="check" onPress={onClose}>
-            Done
-          </Button>
-        )}
         <Button icon="magnifying-glass" onPress={() => setView("language")}>
           Search for subtitles
         </Button>

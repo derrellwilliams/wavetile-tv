@@ -28,19 +28,14 @@
   bottom: 0;
   left: 0;
   width: var(--rail-open);
-  /* Glass that fades out to the right, so the open rail frosts the art behind its labels. */
-  background: linear-gradient(to right, var(--bg) 0%, var(--glass) 60%, transparent);
+  /* A shade that fades out to the right, behind the open rail's labels. No backdrop blur: on the
+     TV a blurred, masked layer this wide rendered in visible bands. Extra stops ease the fade. */
+  background: linear-gradient(to right, var(--bg) 0%, var(--bg) 20%, var(--glass-strong) 50%, var(--glass) 70%, transparent);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--snappy) var(--ease-out);
 }
-/* The blur is only set while the rail is open: an idle blurred layer at the rail's edge showed
-   as a thin seam between the rail and the screen. */
 .rail:focus-within::before {
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  -webkit-mask-image: linear-gradient(to right, var(--bg) 60%, transparent);
-  mask-image: linear-gradient(to right, var(--bg) 60%, transparent);
   opacity: 1;
 }
 .rail-label {
@@ -109,9 +104,11 @@
 .detail {
   padding-top: 0;
 }
+/* z-index lifts the page over the rail, which stays in the page under it on the tablet. */
 .detail {
   --edge: var(--screen-inset);
   position: absolute;
+  z-index: 3;
   inset: 0;
   background: var(--bg);
 }
