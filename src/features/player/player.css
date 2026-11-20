@@ -356,6 +356,15 @@
 .seek-track {
   background: rgb(236 228 210 / 0.4);
 }
+/* The focused seek bar sits on the same dark grey as an unfocused button instead of a tan ring;
+   the track thickens so focus still reads from across the room. */
+.player .seek:focus {
+  background: rgb(38 38 38 / 0.78);
+  box-shadow: inset 0 0 0 1px rgb(236 228 210 / 0.18);
+}
+.player .seek:focus .seek-track {
+  transform: scaleY(1.5);
+}
 
 /* Drawers over the film: darker glass (see --glass-strong), and their rows look as in any other
    drawer, not like the OSD's buttons over the picture. */
